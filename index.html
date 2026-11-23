@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Entre Amigos"><meta name="theme-color" content="#0d0b10">
 <title>Entre Amigos</title>
 <style>
 :root{color-scheme:dark;--bg:#0d0b10;--fg:#f2ece4;--ac:#ffcc4d;--bad:#ff5a5a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -16,7 +17,7 @@ canvas{width:100%;height:100%;display:block;cursor:crosshair}
 #input b{width:46px;height:58px;border:2px solid #fff6;border-radius:8px;background:#000a;display:grid;place-items:center;font:700 30px ui-monospace,monospace;color:var(--ac)}
 #input.bad b{border-color:var(--bad);animation:sh .3s}
 @keyframes sh{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
-#toast{top:16%;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .3s}
+#toast{z-index:6;top:16%;width:100%;text-align:center;font-size:22px;font-weight:700;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .3s}
 #cover{position:absolute;inset:0;background:#000c;display:grid;place-items:center;text-align:center;padding:20px;cursor:pointer}
 #cover h1{margin:0 0 8px;font-size:34px;color:var(--ac)}
 #cover p{margin:6px auto;max-width:520px;line-height:1.5;color:#e6dfd6}
@@ -211,7 +212,7 @@ function stairsOld(){const c=MAPS[P.f][P.y|0]?.[P.x|0];if(performance.now()<stCo
  const nf=c===10?1:0,cx=P.x|0,cy=P.y|0;
  for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]){if(MAPS[nf][cy+dy]?.[cx+dx]===0){P.f=nf;P.x=cx+dx+.5;P.y=cy+dy+.5;P.a+=Math.PI;stCool=performance.now()+800;toast(nf?'Subiste al piso 1':'Bajaste a planta baja');return}}}
 // ---------- objetos: camara y estrellas de invisibilidad ----------
-const ITEMS=[],itemT={},INIT=[['c0','cam',3,4,0],['c1','cam',14,9,0],['s0','star',15,5,0],['s1','star',7,7,0],['s2','star',9,11,0],['s3','star',3,12,0],['s4','star',14,13,0],['m0','map',15,9,0],['m1','map',7,3,0],['m2','map',16,8,0],['m3','map',3,8,0]];
+const ITEMS=[],itemT={},INIT=[['c0','cam',3,4,0],['s0','star',15,5,0],['m0','map',15,9,0]]; // UNA sola camara, UNA estrella y UN mapa en todo el lugar
 function resetItems(){Object.values(itemT).forEach(clearTimeout);ITEMS.length=0;INIT.forEach(([id,deco,x,y,f])=>ITEMS.push({id,deco,rx:x+.5,ry:y+.5,f,alive:true}))}
 resetItems();
 const okCell=(f,x,y)=>{const t=MAPS[f]?.[y|0]?.[x|0];return t===0||t===9};
@@ -626,32 +627,36 @@ var MODE=null,CODE_MODE='create',NOTE='',connTok=0,padOn=false,presIv=0,beatIv=0
 // LISTA DE SERVIDORES (para que aparezcan en "Ver servidores disponibles" y se entre con un toque, sin escribir el codigo):
 // pegá aca la URL de tu Firebase Realtime Database. Ej: 'https://mi-proyecto-default-rtdb.firebaseio.com'  (ver instrucciones en el chat)
 // Si queda vacio, igual se puede crear servidores y unirse con codigo; solo no aparece la lista.
-const DB_URL='https://juego-entre-amigos-16dd7-default-rtdb.firebaseio.com/',PFX='entreamigos-dm-',MAXP=5,SRVKEY='s'+Math.random().toString(36).slice(2,9);
+const DB_URL='',PFX='entreamigos-dm-',MAXP=5,SRVKEY='s'+Math.random().toString(36).slice(2,9);
 const dbu=()=>DB_URL.replace(/\/$/,'')+'/entreamigos/servers/'+SRVKEY+'.json';
 function regBeat(){if(!DB_URL||!room||!room.isHost||!P.name)return;fetch(dbu(),{method:'PUT',body:JSON.stringify({name:P.name,code:SRVCODE,n:lobby.size+1,play:phase==='play',t:Date.now()})}).catch(()=>{})}
 function stopBeat(){clearInterval(beatIv);if(DB_URL&&room&&room.isHost)fetch(dbu(),{method:'DELETE',keepalive:true}).catch(()=>{})}
 async function regList(){if(!DB_URL)return null;try{const r=await fetch(DB_URL.replace(/\/$/,'')+'/entreamigos/servers.json'),d=(await r.json())||{},now=Date.now();return Object.values(d).filter(s=>s&&now-s.t<45000)}catch{return[]}}
-addEventListener('pagehide',()=>{if(room)stopBeat()});
-function mkRoom(peer,isHost){const L={},conns=new Map(),pres=new Map(),pcb=[],ccb=[];let hc=null,dirty=false,iv=0,closed=false;
+addEventListener('pagehide',e=>{if(room){stopBeat();if(!e.persisted)try{room.leave()}catch{}}});
+function mkRoom(peer,isHost){const L={},conns=new Map(),pres=new Map(),seen=new Map(),pcb=[],ccb=[];let hc=null,dirty=false,iv=0,iv2=0,closed=false,lastRx=0;
  const fire=(t,m)=>(L[t]||[]).forEach(f=>{try{f(m)}catch(e){console.error(e)}});
  const emitPeers=snap=>{const me=peer.id,peers=snap.map(([id,p])=>({peer:id,isMe:id===me,sameTab:id===me,kind:'viewer',presence:p}));pcb.forEach(f=>{try{f({peers})}catch(e){console.error(e)}})};
- const bcast=m=>conns.forEach(c=>{if(c.open)try{c.send(m)}catch{}});
- const lost=why=>{if(closed)return;closed=true;clearInterval(iv);ccb.forEach(f=>f(why))};
+ const sweep=(evict)=>{const n=Date.now();conns.forEach((c,id)=>{const t=seen.get(id)||n,age=n-t;
+   if(age>(evict||20000)){conns.delete(id);seen.delete(id);pres.delete(id);dirty=true;try{c.close()}catch{}}
+   else if(age>4000&&pres.has(id)){pres.delete(id);dirty=true}})},
+  bcast=m=>conns.forEach(c=>{if(c.open)try{c.send(m)}catch{}});
+ const lost=why=>{if(closed)return;closed=true;clearInterval(iv);clearInterval(iv2);ccb.forEach(f=>f(why))};
  const r={isHost,
   onPeers:f=>pcb.push(f),on:(t,f)=>(L[t]=L[t]||[]).push(f),onClose:f=>ccb.push(f),
   emit:(t,d)=>{if(isHost)bcast({t:'ev',type:t,data:d,from:peer.id});else if(hc&&hc.open)hc.send({t:'ev',type:t,data:d});return Promise.resolve()},
   presence:p=>{if(isHost){pres.set(peer.id,p);dirty=true}else if(hc&&hc.open)hc.send({t:'pres',p});return Promise.resolve()},
-  leave:()=>{closed=true;clearInterval(iv);try{peer.destroy()}catch{}},
+  leave:()=>{closed=true;clearInterval(iv);clearInterval(iv2);try{peer.destroy()}catch{}},
   _host(){peer.on('connection',conn=>{
-    conn.on('open',()=>{if(conns.size>=MAXP-1){try{conn.send({t:'full'})}catch{}setTimeout(()=>conn.close(),500);return}conns.set(conn.peer,conn);dirty=true});
-    conn.on('data',m=>{if(!m||conns.get(conn.peer)!==conn)return;
+    conn.on('open',()=>{sweep(4000);if(conns.size>=MAXP-1){try{conn.send({t:'full'})}catch{}setTimeout(()=>conn.close(),500);return}conns.set(conn.peer,conn);seen.set(conn.peer,Date.now());dirty=true});
+    conn.on('data',m=>{if(!m||conns.get(conn.peer)!==conn)return;seen.set(conn.peer,Date.now());
      if(m.t==='pres'){pres.set(conn.peer,m.p);dirty=true}
      else if(m.t==='ev'){fire(m.type,{data:m.data,isMe:false,peer:conn.peer});conns.forEach((c,id)=>{if(id!==conn.peer&&c.open)try{c.send({t:'ev',type:m.type,data:m.data,from:conn.peer})}catch{}})}});
-    const gone=()=>{if(conns.get(conn.peer)===conn){conns.delete(conn.peer);pres.delete(conn.peer);dirty=true}};
+    const gone=()=>{if(conns.get(conn.peer)===conn){conns.delete(conn.peer);seen.delete(conn.peer);pres.delete(conn.peer);dirty=true}};
     conn.on('close',gone);conn.on('error',gone)});
    peer.on('disconnected',()=>{try{peer.reconnect()}catch{}});
+   iv2=setInterval(()=>sweep(),1000);
    iv=setInterval(()=>{if(!dirty)return;dirty=false;const s=[...pres.entries()];bcast({t:'peers',list:s});emitPeers(s)},100)},
-  _client(conn){hc=conn;conn.on('data',m=>{if(!m)return;if(m.t==='peers')emitPeers(m.list);else if(m.t==='ev')fire(m.type,{data:m.data,isMe:false,peer:m.from});else if(m.t==='full')lost('El servidor está lleno (máximo '+MAXP+' jugadores).')});
+  _client(conn){hc=conn;lastRx=Date.now();iv2=setInterval(()=>{if(Date.now()-lastRx>15000)lost('Se perdió la conexión con el servidor.')},1000);conn.on('data',m=>{if(!m)return;lastRx=Date.now();if(m.t==='peers')emitPeers(m.list);else if(m.t==='ev')fire(m.type,{data:m.data,isMe:false,peer:m.from});else if(m.t==='full')lost('El servidor está lleno (máximo '+MAXP+' jugadores).')});
    conn.on('close',()=>lost('Se perdió la conexión con el servidor.'));conn.on('error',()=>lost('Se perdió la conexión con el servidor.'))}};
  return r}
 function netCreate(code){return new Promise((res,rej)=>{if(!window.Peer)return rej('No se pudo cargar la red. Revisá tu conexión a internet.');
@@ -674,15 +679,15 @@ function bindRoom(r){room=r;
    if(!e){e={id:p.peer,rx:s.x,ry:s.y,f:nf};others.set(p.peer,e);if(inL&&nf===2)fx(s.x,s.y)}
    else if(inL&&(e.f===2)!==(nf===2)){if(nf===2)fx(s.x,s.y);else fx(e.rx,e.ry);e.rx=s.x;e.ry=s.y}
    e.x=s.x;e.y=s.y;e.a=s.a;e.code=String(s.code||'0000');e.alive=s.alive!==false;e.name=nm;e.kills=s.kills|0;e.f=s.f|0;e.z=+s.z||.5;e.jd=+s.jd||0;e.inv=!!s.inv;e.dz=!!s.dz;e.rn=!!s.rn;e.ab=!!s.ab;{const jc=s.jc|0,ac=s.ac|0;if(e.jc!==undefined&&jc!==e.jc)actSound(e,'SALTAR');if(e.ac!==undefined&&ac!==e.ac)actSound(e,'PINAMAL');{const sc=s.sc|0;if(e.sc!==undefined&&sc!==e.sc)actSound(e,'CAMARA');e.sc=sc}e.jc=jc;e.ac=ac}{const hc=s.hc|0;if(e.hc!==undefined&&hc!==e.hc&&performance.now()-(e.hit||0)>300){e.hit=performance.now();e.hd=Math.random()<.5?-1:1;if(performance.now()-(e.myHit||0)>2500)hitSound(e)}e.hc=hc}e.face=FACES.includes(s.face)?s.face:null}
-  for(const id of [...others.keys()])if(!seen.has(id)){const o=others.get(id);if(o&&o.f===2&&phase==='lobby'&&P.f===2){addBeam(o.rx,o.ry,2);actSound(o,'SUMAUNO')}others.delete(id)}
+  for(const id of [...others.keys()])if(!seen.has(id)){ITEMS.forEach(it=>{if(it.holder===id){it.holder=null;const a=INIT.find(q=>q[0]===it.id);if(a)moveItem(it.id,a[2],a[3],a[4],0)}});const o=others.get(id);if(o&&o.f===2&&phase==='lobby'&&P.f===2){addBeam(o.rx,o.ry,2);actSound(o,'SUMAUNO')}others.delete(id)}
   for(const id of [...lobby.keys()])if(!inLobby.has(id))lobby.delete(id);
   realCount=others.size;assignBots();drawLobby();refreshChars()});
  r.on('kill',m=>{const d=m.data;if(phase!=='play'||!d||m.isMe)return;
   if(d.target!==myId){const v=others.get(d.target);if(v){addBeam(v.rx,v.ry,v.f);actSound(v,'SUMAUNO')}return}
   const k=others.get(m.peer);if(k&&Math.hypot(k.x-P.x,k.y-P.y)>20)return;die(k&&k.name)});
  r.on('punch',m=>{const d=m.data;if(phase!=='play'||!d||d.target!==myId||m.isMe)return;const k=others.get(m.peer);if(k&&Math.hypot(k.x-P.x,k.y-P.y)>4)return;getPunched(k)});
- r.on('pick',m=>{if(m.isMe)return;const d=m.data||{},it=ITEMS.find(i=>i.id===d.id);if(!it)return;if(it.deco!=='map'){const k=others.get(m.peer);if(k)actSound(k,'CLINK')}if(it.deco==='cam'){it.alive=false;clearTimeout(itemT[it.id])}else moveItem(d.id,+d.nx,+d.ny,d.nf|0,60000)});
- r.on('camdrop',m=>{if(m.isMe)return;const d=m.data||{};moveItem(d.id,+d.nx,+d.ny,d.nf|0,0)});
+ r.on('pick',m=>{if(m.isMe)return;const d=m.data||{},it=ITEMS.find(i=>i.id===d.id);if(!it)return;if(it.deco!=='map'){const k=others.get(m.peer);if(k)actSound(k,'CLINK')}if(it.deco==='cam'){it.alive=false;it.holder=m.peer;clearTimeout(itemT[it.id])}else moveItem(d.id,+d.nx,+d.ny,d.nf|0,60000)});
+ r.on('camdrop',m=>{if(m.isMe)return;const d=m.data||{},ci=ITEMS.find(i=>i.id===d.id);if(ci)ci.holder=null;moveItem(d.id,+d.nx,+d.ny,d.nf|0,0)});
  r.on('start',m=>{if(m.isMe||phase!=='lobby'||m.peer!==PFX+SRVCODE)return;startGame((m.data&&m.data.bots)|0)});
  r.on('win',m=>{if(m.isMe)return;endGame(String((m.data&&m.data.name)||'?').slice(0,14))});
  clearInterval(presIv);
@@ -717,8 +722,15 @@ function padDigit(d){if(performance.now()<lockUntil||buf.length>=4)return;buf+=d
  cv.addEventListener('pointerdown',e=>{if(!MOB||e.pointerType==='mouse')return;lid=e.pointerId;lx=e.clientX;try{cv.setPointerCapture(e.pointerId)}catch{}});
  cv.addEventListener('pointermove',e=>{if(e.pointerId===lid&&inGame()&&P.alive){P.a+=(e.clientX-lx)*.006;lx=e.clientX}});
  cv.addEventListener('pointerup',e=>{if(e.pointerId===lid)lid=null});cv.addEventListener('pointercancel',e=>{if(e.pointerId===lid)lid=null})})();
-function setMob(v){MOB=v;document.body.classList.toggle('mob',v);
- if(v){try{const d=document.documentElement;if(d.requestFullscreen)d.requestFullscreen().then(()=>{try{screen.orientation.lock('landscape').catch(()=>{})}catch{}}).catch(()=>{})}catch{}}}
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+function fsHelp(){const ua=navigator.userAgent,ph=/iPhone|iPod/.test(ua);
+ toast(ph?'En iPhone el navegador no permite pantalla completa. Tocá Compartir ⬆ → «Agregar a pantalla de inicio» y abrí el juego desde ese ícono.':(self!==top?'La página que contiene al juego bloquea la pantalla completa. Abrí el juego en su propia pestaña.':'Tu navegador no permitió la pantalla completa (probá con F11).'));
+ clearTimeout(toast.t);toast.t=setTimeout(()=>{$('toast').style.opacity=0},6500)}
+function goFS(quiet){const d=document.documentElement,rq=d.requestFullscreen||d.webkitRequestFullscreen;
+ if(!rq){if(!quiet)fsHelp();return}
+ try{const r=rq.call(d,{navigationUI:'hide'});if(r&&r.then)r.then(()=>{if(MOB)try{screen.orientation.lock('landscape').catch(()=>{})}catch{}}).catch(()=>{if(!quiet)fsHelp()})}catch{if(!quiet)fsHelp()}}
+function toggleFS(){if(fsEl())(document.exitFullscreen||document.webkitExitFullscreen).call(document);else goFS(false)}
+function setMob(v){MOB=v;document.body.classList.toggle('mob',v);if(v)goFS(true)}
 const go=p=>{phase=p;renderCard()};
 // ---------- pantallas ----------
 function renderCard(winner){const c=$('card'),l3=phase==='lobby'&&LOBBY3D();$('cover').style.display=l3?'none':'flex';$('lp').style.display=l3?'block':'none';if(l3){renderLobbyPanel();return}
@@ -758,6 +770,6 @@ function renderCard(winner){const c=$('card'),l3=phase==='lobby'&&LOBBY3D();$('c
   drawLobby();return}
  if(phase==='over'){c.innerHTML='<h2 class="h">🏆 ¡Ganó <span id="wn"></span>!</h2>'+B('bk','Volver a la sala');$('wn').textContent=winner;$('bk').onclick=enterLobby}}
 var SRVCODE=null;
-$('fs').onmousedown=e=>e.preventDefault();$('fs').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{})};
+$('fs').onmousedown=e=>e.preventDefault();$('fs').onclick=toggleFS;
 renderCard();
 </script></body></html>
