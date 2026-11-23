@@ -61,6 +61,13 @@ canvas{width:100%;height:100%;display:block;cursor:crosshair}
 .card input[type=text]{width:80%;padding:10px;font-size:18px;border-radius:8px;border:1px solid #fff4;background:#0d0b10;color:var(--fg);text-align:center}
 .card select{width:80%;padding:10px;font-size:17px;border-radius:8px;border:1px solid #fff4;background:#0d0b10;color:var(--fg);text-align:center;cursor:pointer}
 .card option:disabled{color:#777}
+#chg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:6px 0 4px}
+.card .chc{position:relative;margin:0;padding:5px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;background:#0d0b10;color:var(--fg);border:2px solid #fff3;border-radius:10px;font-size:clamp(9px,2.6vw,12px);font-weight:700;min-width:0;touch-action:manipulation}
+.card .chc img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:#2a2433;display:block}
+.card .chc span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .chc.on{border-color:var(--ac);background:#2a2433;box-shadow:0 0 0 2px var(--ac)}
+.card .chc.tk{opacity:.4;cursor:not-allowed}
+.card .chc.tk::after{content:'Ya elegido';position:absolute;left:2px;right:2px;top:35%;padding:2px 0;border-radius:4px;background:#000c;color:#fff;font-size:clamp(8px,2.2vw,10px)}
 #chimg{display:none;width:72px;height:72px;object-fit:cover;border:2px solid var(--ac);border-radius:8px;margin:10px auto 0}
 #err{color:var(--bad);min-height:18px;font-size:14px;margin-top:8px}
 .card button{margin-top:14px;padding:10px 22px;font-size:17px;font-weight:700;border:0;border-radius:8px;background:var(--ac);color:#1a1200;cursor:pointer}
@@ -1454,11 +1461,9 @@ function renderLobbyPanel(){const p=$('lp'),host=room&&room.isHost;
  $('bt').onchange=e=>{useBots=Math.max(0,Math.min(maxBots(),parseInt(e.target.value)||0));e.target.value=useBots};
  $('wdb').onclick=openWardrobe;$('st').onclick=doStart;$('lv').onclick=leaveToMenu;drawLobby()}
 function refreshChars(){const ch=$('ch');if(!ch||phase!=='name')return;const taken=new Set([...lobby.values()].map(p=>p.face).filter(Boolean));
- // en celular el selector nativo se cierra y parpadea si se toca el DOM mientras esta abierto (esto corre con cada actualizacion de los demas jugadores):
- // por eso no se toca con el selector abierto (se actualiza al cerrarlo) y solo se escribe lo que cambio de verdad
- if(document.activeElement===ch)return;
- [...ch.options].forEach(o=>{if(!o.value)return;const t=taken.has(o.value),tx=o.value+(t?' (ya elegido)':'');if(o.disabled!==t)o.disabled=t;if(o.textContent!==tx)o.textContent=tx});
- if(ch.value&&taken.has(ch.value)){ch.value='';$('chimg').style.display='none'}}
+ // se llama con cada actualizacion de los demas jugadores: solo se toca el DOM de lo que cambio de verdad (si no, en celular parpadea)
+ document.querySelectorAll('#chg .chc').forEach(b=>{const t=taken.has(b.dataset.v);if(b.disabled!==t){b.disabled=t;b.classList.toggle('tk',t)}if(t&&b.classList.contains('on'))b.classList.remove('on')});
+ if(ch.value&&taken.has(ch.value))ch.value=''}
 // ---------- UI de menus, flujo de pantallas y red ----------
 var MODE=null,CODE_MODE='create',NOTE='',connTok=0,padOn=false,presIv=0,beatIv=0,pendSrv=null;
 // === CONFIGURACION DE RED ===
@@ -1678,10 +1683,10 @@ function renderCard(winner){const c=$('card'),l3=phase==='lobby'&&LOBBY3D();$('c
    const tok=++connTok;$('cok').disabled=true;err.style.color='#ddd';err.textContent='Conectando…';
    (CODE_MODE==='create'?netCreate(code):netJoin(code)).then(r=>{if(tok!==connTok||phase!=='code'){try{r.leave()}catch{}return}bindRoom(r);SRVCODE=code;go('name')}).catch(m=>{if(tok!==connTok||phase!=='code')return;err.style.color='';err.textContent=String(m);$('cok').disabled=false})};
   $('cok').onclick=ok;cd.onkeydown=e=>{if(e.key==='Enter')ok()};$('cbk').onclick=()=>{connTok++;go(pendSrv?'list':'srv')};if(!MOB)cd.focus();return}
- if(phase==='name'){c.innerHTML='<h2 class="h">'+(SRVCODE?'Servidor '+SRVCODE:'Modo bots')+'</h2><p>Todos llevan un cartelito de 4 dígitos en la frente (el tuyo no lo ves). Leé el de otro y escribilo: el primero que acierta lo elimina. Gana quien llegue a '+GOAL+' eliminaciones.</p><label for="ch" style="display:block;font-weight:700;margin-bottom:6px">¿Qué personaje sos?</label><select id="ch"><option value="">Elegí tu personaje…</option>'+FACES.map(f=>'<option value="'+f+'">'+f+'</option>').join('')+'</select><br><img id="chimg" alt=""><input type="text" id="nm" maxlength="14" placeholder="Tu nombre" autocomplete="off" style="margin-top:12px"><div id="err"></div><div class="row">'+B('go','Entrar')+B('nbk','Atrás','sec')+'</div>';
-  const nm=$('nm'),ch=$('ch'),im=$('chimg'),cap=v=>v[0]+v.slice(1).toLowerCase(),
-  gon=()=>{refreshChars();if(!ch.value){$('err').textContent='Elegí tu personaje primero';ch.focus();return}const v=nm.value.trim();if(!v){$('err').textContent='Escribí tu nombre';nm.focus();return}P.name=v;P.pick=P.face=ch.value;const lv=MODE==='server'&&room?[...lobby.values()].find(p=>p.playing):null;if(lv){startGame(lv.bots|0,lv);if(!MOB)try{cv.requestPointerLock()}catch{}}else{if(MODE==='server')joinLiveUntil=performance.now()+3000;enterLobby()}};
-  ch.onblur=refreshChars;ch.onchange=()=>{$('err').textContent='';if(ch.value){im.onload=()=>im.style.display='block';im.onerror=()=>im.style.display='none';im.src='fotos/'+encodeURIComponent(ch.value)+'1.png';if(!nm.value.trim()||nm.value===nm.dataset.auto)nm.value=nm.dataset.auto=cap(ch.value)}else im.style.display='none'};
+ if(phase==='name'){c.innerHTML='<h2 class="h">'+(SRVCODE?'Servidor '+SRVCODE:'Modo bots')+'</h2><p>Todos llevan un cartelito de 4 dígitos en la frente (el tuyo no lo ves). Leé el de otro y escribilo: el primero que acierta lo elimina. Gana quien llegue a '+GOAL+' eliminaciones.</p><div style="font-weight:700;margin-bottom:6px">¿Qué personaje sos? Tocá uno</div><div id="chg">'+FACES.map(f=>'<button type="button" class="chc" data-v="'+f+'"><img src="fotos/'+encodeURIComponent(f)+'1.png" alt="" onerror="this.style.visibility=\'hidden\'"><span>'+f[0]+f.slice(1).toLowerCase()+'</span></button>').join('')+'</div><input type="hidden" id="ch" value=""><input type="text" id="nm" maxlength="14" placeholder="Tu nombre" autocomplete="off" style="margin-top:12px"><div id="err"></div><div class="row">'+B('go','Entrar')+B('nbk','Atrás','sec')+'</div>';
+  const nm=$('nm'),ch=$('ch'),cap=v=>v[0]+v.slice(1).toLowerCase(),
+  gon=()=>{refreshChars();if(!ch.value){$('err').textContent='Elegí tu personaje primero';return}const v=nm.value.trim();if(!v){$('err').textContent='Escribí tu nombre';nm.focus();return}P.name=v;P.pick=P.face=ch.value;const lv=MODE==='server'&&room?[...lobby.values()].find(p=>p.playing):null;if(lv){startGame(lv.bots|0,lv);if(!MOB)try{cv.requestPointerLock()}catch{}}else{if(MODE==='server')joinLiveUntil=performance.now()+3000;enterLobby()}};
+  $('chg').onclick=e=>{const b=e.target.closest('.chc');if(!b||b.disabled)return;ch.value=b.dataset.v;$('err').textContent='';[...$('chg').children].forEach(x=>x.classList.toggle('on',x===b));if(!nm.value.trim()||nm.value===nm.dataset.auto)nm.value=nm.dataset.auto=cap(ch.value)};
   $('go').onclick=gon;nm.onkeydown=e=>{if(e.key==='Enter')gon()};
   $('nbk').onclick=()=>{if(MODE==='server'){leaveRoom();SRVCODE=null;go('srv')}else go('mode')};refreshChars();return}
  if(phase==='lobby'){const help=MOB?'Joystick izquierdo: moverte · arrastrá en la pantalla: girar<br>👊 piña · ⬆ saltar · 🤫 modo sigiloso (gatear sin ruido) · 🔢 teclado para escribir el cartelito<br>📷 foto (si tenés la cámara)':'W A S D mover · mouse o ← → girar · 0–9 escribir · Backspace borrar<br>Espacio saltar (¡podés subirte a los sillones!) · C agacharse · Ctrl sigilo (gateás despacio y sin ruido; otra vez para levantarte) · Shift correr<br>Q o clic: piña 👊 (deja ciego 5 s) · F foto · V ver foto';
