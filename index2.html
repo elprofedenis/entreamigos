@@ -179,12 +179,17 @@ body.mob #naipe.ready{pointer-events:auto;cursor:pointer}
   <button id="fs" title="Pantalla completa">⛶</button><button id="ex" title="Salir de la partida (volver a la sala)">🚪</button>
   <div id="lp"></div>
   <div id="wd"><div class="wdm"><div class="frame"><div class="glass"><canvas id="wdc" width="300" height="440"></canvas></div></div><div class="wdr"><button id="wdl" title="Girar">◀</button><button id="wdf">Frente</button><button id="wdr" title="Girar">▶</button></div><label><input type="checkbox" id="wdeye"> ver ojos detectados</label></div><div class="wdp"><h3>👕 Vestuario</h3><div id="wdt"></div><div id="wdo"></div><div class="wda"><button id="wdrnd">🎲 Al azar</button><button id="wdrst">Quitar todo</button><button id="wdok">✔ Listo</button></div></div></div>
-  <div id="tc"><div id="joy"><div id="joyk"></div></div><button class="tb" id="bPunch">👊</button><button class="tb" id="bJump">⬆</button><button class="tb" id="bCrouch">⇩</button><button class="tb" id="bPadBtn">🔢</button><button class="tb" id="bBomb" style="display:none">💣</button><button class="tb" id="bPhoto" style="display:none">📷</button><button class="tb" id="bView" style="display:none">🖼</button></div>
+  <div id="tc"><div id="joy"><div id="joyk"></div></div><button class="tb" id="bPunch">👊</button><button class="tb" id="bJump">⬆</button><button class="tb" id="bCrouch" title="Modo sigiloso">🤫</button><button class="tb" id="bPadBtn">🔢</button><button class="tb" id="bBomb" style="display:none">💣</button><button class="tb" id="bPhoto" style="display:none">📷</button><button class="tb" id="bView" style="display:none">🖼</button></div>
 </div>
 <div id="rot">📱<br>Girá el celular en horizontal<br>para jugar</div>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
-const W=800,H=450,cv=document.getElementById('c');let ctx=cv.getContext('2d');cv.width=W;cv.height=H;
+let W=800,H=450;const cv=document.getElementById('c');let ctx=cv.getContext('2d',{alpha:false});cv.width=W;cv.height=H;
+// resolucion interna adaptativa: en celular se renderiza a menos pixeles (y baja sola si los FPS no alcanzan)
+const RES_MOB=[[576,324],[480,270],[384,216]];let resLv=-1,resT=0;
+function setRes(w,h){if(w===W&&h===H)return;W=w;H=h;cv.width=W;cv.height=H;zb=new Float32Array(W);mf=new Int8Array(W);zb2=new Float32Array(W);HZ=H/2+PIT;try{ctx.imageSmoothingEnabled=true}catch{}}
+function resAdapt(n){if(!MOB||document.hidden)return;if(resLv<0){resLv=0;setRes(...RES_MOB[0]);resT=n+2500;return}
+ if(n<resT||resLv>=RES_MOB.length-1)return;resT=n+2000;if(LP_FT>25){resLv++;setRes(...RES_MOB[resLv])}}
 let CSD=0;{const P2=CanvasRenderingContext2D.prototype,s0=P2.save,r0=P2.restore;P2.save=function(){CSD++;return s0.call(this)};P2.restore=function(){if(CSD>0)CSD--;return r0.call(this)}}
 const $=id=>document.getElementById(id);const NI=$('numin');
 // ---------- mapa: casa grande ----------
@@ -255,7 +260,7 @@ function drawFloatImg(im,e,cx,fy,h,rgb,w0,hh0){const t=performance.now(),ph=e.id
  yc=(.44+Math.sin(t/520+ph)*.045)*h,ang=Math.sin(t/1100+ph)*.62,cyy=fy-yc,hh=hh0*h,ar=(im.naturalWidth||im.width)/(im.naturalHeight||im.height)||1,w=Math.min(hh*ar,w0*h);
  itemHalo(cx,cyy,h*.34,rgb,t);
  img3D(im,cx,cyy,w,hh,ang)}
-function drawDeco(e,cx,cy,h,w){const fy=cy+h/2,k=e.deco;ctx.filter='brightness('+(1/(1+H/h*.09)*((k==='beam'||k==='puff'||k==='bomb'||k==='aim')?1:1-.88*DK)).toFixed(3)+')';
+function drawDeco(e,cx,cy,h,w){const fy=cy+h/2,k=e.deco;if(!MOB||DK>.01)ctx.filter='brightness('+(1/(1+H/h*.09)*((k==='beam'||k==='puff'||k==='bomb'||k==='aim')?1:1-.88*DK)).toFixed(3)+')';
  const R=(x,y,a,b,c)=>{ctx.fillStyle=c;ctx.fillRect(cx+x*h,fy-(y+b)*h,a*h,b*h)},
  C=(x,y,r,c)=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(cx+x*h,fy-y*h,r*h,0,7);ctx.fill()},
  E=(x,y,a,b,c)=>{ctx.fillStyle=c;ctx.beginPath();ctx.ellipse(cx+x*h,fy-y*h,a*h,b*h,0,0,7);ctx.fill()};
@@ -340,7 +345,7 @@ const pc=$('photo'),pcx=pc.getContext('2d');let photoBig=false,photoCd=0,hasPhot
 function clearPhoto(){hasPhoto=false;photoBig=false;pc.style.display='none';pc.className=''}
 function flash(){const f=$('flash');f.style.transition='none';f.style.opacity=1;requestAnimationFrame(()=>{f.style.transition='opacity .6s';f.style.opacity=0})}
 function shoot(){const n=performance.now();if(!P.cam||!P.alive||phase!=='play'||P.bd||n<photoCd)return;photoCd=n+2000;P.sc=(P.sc|0)+1;ensureAudio();playSnd('CAMARA',0,0,1);
- T=T0*.5;render();pcx.drawImage(cv,0,0);T=T0;render();hasPhoto=true;pc.style.display='block';pc.className=photoBig?'big':'';flash();toast('📷 ¡Foto! V para verla')}
+ T=T0*.5;render();pcx.drawImage(cv,0,0,800,450);T=T0;render();hasPhoto=true;pc.style.display='block';pc.className=photoBig?'big':'';flash();toast('📷 ¡Foto! V para verla')}
 // ---------- piña, vista nublada y controles ----------
 let punchCd=0,punchAnim=-1e9,showKeys=true;const PUNCH_REACH=1.0,PUNCH_ARC=.5; // alcance del brazo (casilleros) y apertura frontal (rad)
 const KEYS='<b>W A S D</b> mover<br><b>Mouse / ← →</b> girar<br><b>Espacio</b> saltar (¡a los sillones!)<br><b>C</b> agacharse<br><b>Ctrl</b> 🤫 modo sigiloso (gatear sin ruido · otra vez: levantarse)<br><b>Shift</b> correr<br><b>0-9</b> número · <b>⌫</b> borrar<br><b>Q / clic</b> 👊 piña<br><b>F</b> 🃏 cambiar número (naipe cargado) · <b>G</b> foto · <b>V</b> ver foto<br><b>B</b> 💣 sacar/guardar bomba (5 ⭐) · <b>clic</b> tirarla<br><b>clic</b> 🧱 sobre el ladrillo: agarrarlo · <b>clic</b> tirarlo<br><b>clic</b> ⚡ en un tablero (pared verde; hay 2 y salen en el mapa): palanca / reparar<br><b>H</b> ocultar controles';
@@ -521,7 +526,7 @@ function drawBeam(e,cx,fy,h){const age=(performance.now()-e.t0)/1500;if(age>=1){
  for(let i=0;i<16;i++){const ph=(i*.137+age*1.3+(i%3)*.21)%1,sx=cx+Math.sin(i*12.9+age*4)*bw*1.4*(1-ph*.3),sy=fy-ph*h*2.6,r=h*.03*(1-ph)*(1+(i%2));starP(sx,sy,r*2,`rgba(255,${215+i*2},${140+i*7},${(1-ph)*fade})`)}}
 // ---------- estado ----------
 let T=Math.tan(66*Math.PI/360),EYE=.5,PIT=0,HZ=H/2;const PITMAX=0,PITSENS=1; // PIT: px que se corre el horizonte al mirar arriba(+)/abajo(-) · HZ: y del horizonte en pantalla
-const T0=T,zb=new Float32Array(W);
+const T0=T;let zb=new Float32Array(W);
 const [sx0,sy0,sf0]=spawn();
 const P={x:sx0,y:sy0,a:Math.random()*6.28,code:newCode(),alive:true,kills:0,name:'',f:sf0,face:null,e:.6,jh:0,vz:0,cam:null,inv:0,blur:0,map:0,hc:0,kx:0,ky:0,shake:0,zo:0,rn:0,mi:0,ab:0,jc:0,ac:0,sc:0,st:0,bombs:0,dnu:0,dnf:0};
 const GOAL=25;let phase='device',MOB=false,JOY={x:0,y:0,m:0},useBots=3,botsOn=false,hudT=0;
@@ -809,8 +814,8 @@ const LP_HEAD=.27; // alto de la foto de la cara respecto de la altura del perso
 const LP_MAXHI=10; // maximo de personajes por cuadro con detalle alto (niveles 0 y 1)
 const LP_CACHE=1400; // maximo de poses en cache
 let LP_DK=1,LP_BUD=6,LP_HI=0,LP_Q=1,LP_FT=16,LP_T=0;
-function lpFrame(){const n=performance.now(),dt=LP_T?Math.min(100,n-LP_T):16;LP_T=n;LP_FT+=(dt-LP_FT)*.05;LP_BUD=6;LP_HI=0;
- const base=(typeof MOB!=='undefined'&&MOB)?.75:1,tg=LP_FT>27?base*.5:LP_FT>21?base*.7:base;LP_Q+=(tg-LP_Q)*.04}
+function lpFrame(){const n=performance.now(),dt=LP_T?Math.min(100,n-LP_T):16;LP_T=n;LP_FT+=(dt-LP_FT)*.05;LP_BUD=(typeof MOB!=='undefined'&&MOB)?3:6;LP_HI=0;
+ const base=(typeof MOB!=='undefined'&&MOB)?.65:1,tg=LP_FT>27?base*.5:LP_FT>21?base*.7:base;LP_Q+=(tg-LP_Q)*.04}
 const lpR=(y,rx,rz,ox=0,oz=0)=>({y,rx,rz,ox,oz}),lpBall=r=>[lpR(r,.001,.001),lpR(r*.5,r*.87,r*.87),lpR(-r*.5,r*.87,r*.87),lpR(-r,.001,.001)];
 const LPSPEC={
  torso:[lpR(.4,.001,.001),lpR(.425,.08,.058),lpR(.455,.095,.07),lpR(.52,.082,.06),lpR(.6,.1,.068),lpR(.68,.125,.072),lpR(.735,.15,.068),lpR(.765,.05,.045)],
@@ -950,7 +955,7 @@ function drawPerson(e,cx,cy,h){
    pt:usePat?({hs:1,vs:2,band:3,diag:4,plaid:5,dots:6})[SH.p]|0:0,has2:usePat?1:0,boot:!bl&&ZP.t?1:0}});
  let fd0=sd<0?-1:1;if(ACK&&!sil&&!CR){const f0=faceImg(e,fr,sd,bl,amp);if(f0)fd0=faceInfo(f0,FK,FV).fd}
  // el oscurecimiento por distancia ya va dentro de los colores del cuerpo; el filtro del canvas solo se usa para la foto de la cara (1 sola imagen)
- const fl=()=>{if(LP_DK<.93)ctx.filter='brightness('+LP_DK.toFixed(2)+')'};
+ const fl=()=>{if(!MOB&&LP_DK<.93)ctx.filter='brightness('+LP_DK.toFixed(2)+')'};
  const headCb=(px,py)=>{ctx.save();fl();ctx.translate(px-cx,py-hy);
   const fim=faceImg(e,fr,sd,bl,amp);
  let HG={x:cx-hs*.45,y:hy-hs/2,w:hs*.9,h:hs,im:null};if(sil){E(cx,hy,hrx,hs*.5,hcol)}else if(fim&&fim.width>0&&fim.height>0){const ar=fim.width/fim.height,ph=hs,pw=Math.min(hs*1.3,ph*ar);ctx.drawImage(fim,cx-pw/2,hy-ph/2,pw,ph);HG={x:cx-pw/2,y:hy-ph/2,w:pw,h:ph,im:fim}}else{
@@ -995,7 +1000,7 @@ function drawStairs(){const dd=(SY1-SY0)/SN,off=P.f?SH:0,fs=[],T0=[200,152,92],R
   if(P.x>X1)fs.push({d:Math.hypot(P.x-X1,P.y-ym),p:[[X1,yn,zf],[X1,ys,zf],[X1,ys,z],[X1,yn,z]],c:S0,m:1})}
  if(!off&&P.y<SY0)fs.push({d:Math.hypot(P.x-9,P.y-SY0),p:[[X0,SY0,0],[X1,SY0,0],[X1,SY0,SH],[X0,SY0,SH]],c:R0,m:.85});
  fs.sort((a,b)=>b.d-a.d).forEach(f=>drawFace(f.p,f.c,f.m))}
-const GOLD1=[232,190,84],GOLD2=[132,90,26],isMir=(x,y)=>MAPS[P.f][y]?.[x]===13,mf=new Int8Array(W),zb2=new Float32Array(W);let MFACES=[];
+const GOLD1=[232,190,84],GOLD2=[132,90,26],isMir=(x,y)=>MAPS[P.f][y]?.[x]===13;let mf=new Int8Array(W),zb2=new Float32Array(W),MFACES=[];
 // una columna de espejo: marco dorado + vidrio con la pared de enfrente reflejada (el rayo rebota)
 function mirrorCol(i,r,ox,oy,rx,ry,out){
  const lh=H/r.d,f=1/(1+r.d*(out?.06:.14))*(r.side?.75:1)*(1-.88*DK),y0=HZ-lh/2+(EYE-.5)*lh,bar=(y,h,c)=>{ctx.fillStyle=c;ctx.fillRect(i,y,1,Math.max(1,h))};
@@ -1243,8 +1248,8 @@ function drawCeiling(){
  const hz=Math.min(HZ,H);if(hz<=0)return;
  const up=Math.max(.05,1-EYE),dk=1-.88*DK,wide=up*H;
  // plafon liso: mas claro cerca, se oscurece con la distancia igual que las paredes
- for(let y=0;y<hz;y+=2){const d=wide/Math.max(.5,hz-y),f=1/(1+d*.14)*dk;ctx.fillStyle=`rgb(${(222*f)|0},${(216*f)|0},${(202*f)|0})`;ctx.fillRect(0,y,W,3)}
- const R=11,px=P.x|0,py=P.y|0,N=2*R+2,pts=[];
+ const stp=MOB?4:2;for(let y=0;y<hz;y+=stp){const d=wide/Math.max(.5,hz-y),f=1/(1+d*.14)*dk;ctx.fillStyle=`rgb(${(222*f)|0},${(216*f)|0},${(202*f)|0})`;ctx.fillRect(0,y,W,stp+1)}
+ const R=MOB?8:11,px=P.x|0,py=P.y|0,N=2*R+2,pts=[];
  for(let i=0;i<N;i++){pts.push([]);for(let j=0;j<N;j++){const p=proj({rx:px-R+i,ry:py-R+j});pts[i].push(p.ty>.25?[p.scr,HZ-wide/p.ty,p.ty]:null)}}
  // juntas de las placas del cielorraso
  ctx.save();ctx.lineWidth=1;ctx.strokeStyle=`rgba(70,58,44,${.3*dk+.05})`;ctx.beginPath();
@@ -1326,6 +1331,7 @@ let last=performance.now(),errN=0;
 function reportErr(w,err){console.error('[juego] error en '+w,err);if(errN++<3)try{toast('⚠ Error en '+w+': '+((err&&err.message)||err),'#ff5a5a')}catch{}}
 (function loop(t){requestAnimationFrame(loop); // se agenda PRIMERO: pase lo que pase, el juego sigue dibujando
  const dt=Math.min(.05,(t-last)/1000||0);last=t;
+ try{resAdapt(t)}catch(err){}
  try{update(dt)}catch(err){reportErr('update',err)}
  try{render()}catch(err){reportErr('render',err);try{if(ctx.reset)ctx.reset();else ctx.setTransform(1,0,0,1,0,0);CSD=0;ctx.filter='none';ctx.shadowBlur=0;ctx.globalAlpha=1}catch{}}})(last);
 // ---------- NAIPE: se carga 5 min; al llegar al 100% se puede usar (tecla F) para cambiar tu numero ----------
@@ -1371,9 +1377,11 @@ function exitToLobby(){if(phase!=='play')return;try{document.exitPointerLock()}c
 $('ex').onmousedown=e=>e.preventDefault();$('ex').onclick=exitToLobby;
 function feed(t,c){const f=$('feed'),d=document.createElement('div');d.className='fm';d.textContent=t;if(c)d.style.color=c;f.appendChild(d);while(f.children.length>4)f.firstChild.remove();setTimeout(()=>{d.style.opacity=0;setTimeout(()=>d.remove(),500)},4500)}
 function scoreRows(){return[{n:P.name||'Vos',k:P.kills|0,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k)}
-function drawTop(){$('ex').style.display=phase==='play'?'block':'none';$('input').style.display=phase==='play'?'':'none';$('keys').innerHTML=phase==='play'&&showKeys&&!MOB?KEYS:'';tcSync();const arr=[{n:P.name||'Vos',k:P.kills,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k).slice(0,6);
- $('top').innerHTML='';{const rows=scoreRows(),top=rows[0].k,cands=rows.filter(r=>r.k===top),ld=cands.find(r=>r.n===lastLead)||cands.find(r=>r.me)||cands[0];if(phase==='play'&&top>0&&ld.n!==lastLead){feed(ld.me?'👑 ¡Pasaste al frente!':'👑 '+ld.n+' lleva la delantera','#ffcc4d');lastLead=ld.n}const lead=top;$('score').innerHTML=phase==='play'?`<div class="st">Primero en lograr ${GOAL} eliminaciones</div><div class="sr"><div class="sb"><b>${lead}</b><span>${top>0?'👑 '+esc(ld.me?'Vos':ld.n):'Líder'}</span></div><em>-</em><div class="sb me"><b>${P.kills|0}</b><span>Vos</span></div></div>`:''}
- $('goal').textContent=phase==='play'&&botsOn?'Bots activados':'';$('stats').textContent=phase==='play'?''+(!MOB&&P.cam?' · 📷 G foto, V ver':'')+(!MOB&&P.mapId?' · 🗺️ mapa (hasta que te eliminen)':'')+(performance.now()<P.blur?' · 💫 nublado '+Math.ceil((P.blur-performance.now())/1000)+'s':'')+(P.hold==='brick'?' · 🧱 clic: tirar':P.hold?' · 💣 clic: tirar · B: guardar':'')+(performance.now()<P.inv?' · ⭐ invisible '+Math.ceil((P.inv-performance.now())/1000)+'s':''):''}
+function drawTop(){$('ex').style.display=phase==='play'?'block':'none';$('input').style.display=phase==='play'?'':'none';setHtml('keys',phase==='play'&&showKeys&&!MOB?KEYS:'');tcSync();const arr=[{n:P.name||'Vos',k:P.kills,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k).slice(0,6);
+ {const rows=scoreRows(),top=rows[0].k,cands=rows.filter(r=>r.k===top),ld=cands.find(r=>r.n===lastLead)||cands.find(r=>r.me)||cands[0];if(phase==='play'&&top>0&&ld.n!==lastLead){feed(ld.me?'👑 ¡Pasaste al frente!':'👑 '+ld.n+' lleva la delantera','#ffcc4d');lastLead=ld.n}const lead=top;setHtml('score',phase==='play'?`<div class="st">Primero en lograr ${GOAL} eliminaciones</div><div class="sr"><div class="sb"><b>${lead}</b><span>${top>0?'👑 '+esc(ld.me?'Vos':ld.n):'Líder'}</span></div><em>-</em><div class="sb me"><b>${P.kills|0}</b><span>Vos</span></div></div>`:'')}
+ setTxt('goal',phase==='play'&&botsOn?'Bots activados':'');setTxt('stats',phase==='play'?''+(!MOB&&P.cam?' · 📷 G foto, V ver':'')+(!MOB&&P.mapId?' · 🗺️ mapa (hasta que te eliminen)':'')+(performance.now()<P.blur?' · 💫 nublado '+Math.ceil((P.blur-performance.now())/1000)+'s':'')+(P.hold==='brick'?' · 🧱 clic: tirar':P.hold?' · 💣 clic: tirar · B: guardar':'')+(performance.now()<P.inv?' · ⭐ invisible '+Math.ceil((P.inv-performance.now())/1000)+'s':''):'')}
+function setHtml(id,s){const el=$(id);if(el._h!==s){el._h=s;el.innerHTML=s}}
+function setTxt(id,s){const el=$(id);if(el._t!==s){el._t=s;el.textContent=s}}
 function drawLobby(){if(phase!=='lobby')return;const ul=$('plist');if(!ul)return;
  const l3=LOBBY3D(),host=!room||room.isHost,hid=room&&SRVCODE?PFX+SRVCODE:null,
   rows=[{n:P.name+' (vos)',h:host&&!!room},...[...lobby.entries()].map(([id,p])=>({n:p.name+(p.playing?' · jugando':''),h:id===hid}))];
@@ -1554,7 +1562,7 @@ function brickNear(){if(!P.alive||phase!=='play'||P.hold||performance.now()<P.bl
  let da=d<.05?0:Math.atan2(dy,dx)-P.a;da=Math.atan2(Math.sin(da),Math.cos(da));if(d>.35&&Math.abs(da)>BRICK_GRAB_ARC)return false;
  if(d>.05&&cast(P.x,P.y,dx/d,dy/d).d<d-.2)return false;return true}
 function punchIcon(){if(!MOB)return;const b=$('bPunch'),ic=brickNear()?'✋':'👊';if(b.textContent!==ic)b.textContent=ic}
-function tcSync(){const on=MOB&&inGame(),pl=phase==='play';['bPunch','bPadBtn'].forEach(i=>$(i).style.display=pl?'':'none');$('tc').style.display=on?'block':'none';if(!on){if(padOn)showPad(false);return}$('bPhoto').style.display=P.cam?'grid':'none';$('bBomb').style.display=P.bombs>0&&pl?'grid':'none';$('bView').style.display=hasPhoto?'grid':'none'}
+function tcSync(){const on=MOB&&inGame(),pl=phase==='play';['bPunch','bPadBtn'].forEach(i=>$(i).style.display=pl?'':'none');$('tc').style.display=on?'block':'none';if(!on){if(padOn)showPad(false);return}$('bCrouch').classList.toggle('on',STEALTH);$('bPhoto').style.display=P.cam?'grid':'none';$('bBomb').style.display=P.bombs>0&&pl?'grid':'none';$('bView').style.display=hasPhoto?'grid':'none'}
 (()=>{const joy=$('joy'),jk=$('joyk');let jid=null;
  const jset=e=>{const r=joy.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-(r.left+R),dy=e.clientY-(r.top+R);const l=Math.hypot(dx,dy),mx=R*.7;if(l>mx){dx*=mx/l;dy*=mx/l}
   jk.style.left=(R-24+dx)+'px';jk.style.top=(R-24+dy)+'px';JOY.x=dx/mx;JOY.y=dy/mx;JOY.m=Math.min(1,Math.hypot(JOY.x,JOY.y))};
@@ -1566,7 +1574,7 @@ function tcSync(){const on=MOB&&inGame(),pl=phase==='play';['bPunch','bPadBtn'].
  hold('bPunch',()=>punch());
  hold('bBomb',()=>toggleBomb());
  hold('bJump',()=>{keys.Space=true},()=>{keys.Space=false});
- hold('bCrouch',()=>{keys.KeyC=!keys.KeyC;$('bCrouch').classList.toggle('on',!!keys.KeyC)});
+ hold('bCrouch',()=>{if(phase!=='play'||!P.alive)return;STEALTH=!STEALTH;if(STEALTH){keys.Space=false;keys.ShiftLeft=keys.ShiftRight=false}$('bCrouch').classList.toggle('on',STEALTH);toast(STEALTH?'🤫 Modo sigiloso: gateás sin ruido':'Te levantaste','#ccc')});
  hold('bPhoto',()=>shoot());
  hold('bView',()=>{if(hasPhoto){photoBig=!photoBig;pc.className=photoBig?'big':''}});
  $('bPadBtn').onpointerdown=e=>e.preventDefault();$('bPadBtn').onclick=()=>{ensureAudio();if(phase==='play')showPad(!padOn)};
@@ -1615,7 +1623,7 @@ function renderCard(winner){const c=$('card'),l3=phase==='lobby'&&LOBBY3D();$('c
   ch.onchange=()=>{$('err').textContent='';if(ch.value){im.onload=()=>im.style.display='block';im.onerror=()=>im.style.display='none';im.src='fotos/'+encodeURIComponent(ch.value)+'1.png';if(!nm.value.trim()||nm.value===nm.dataset.auto)nm.value=nm.dataset.auto=cap(ch.value)}else im.style.display='none'};
   $('go').onclick=gon;nm.onkeydown=e=>{if(e.key==='Enter')gon()};
   $('nbk').onclick=()=>{if(MODE==='server'){leaveRoom();SRVCODE=null;go('srv')}else go('mode')};refreshChars();return}
- if(phase==='lobby'){const help=MOB?'Joystick izquierdo: moverte · arrastrá en la pantalla: girar<br>👊 piña · ⬆ saltar · ⇩ agacharse · 🔢 teclado para escribir el cartelito<br>📷 foto (si tenés la cámara)':'W A S D mover · mouse o ← → girar · 0–9 escribir · Backspace borrar<br>Espacio saltar (¡podés subirte a los sillones!) · C agacharse · Ctrl sigilo (gateás despacio y sin ruido; otra vez para levantarte) · Shift correr<br>Q o clic: piña 👊 (deja ciego 5 s) · F foto · V ver foto';
+ if(phase==='lobby'){const help=MOB?'Joystick izquierdo: moverte · arrastrá en la pantalla: girar<br>👊 piña · ⬆ saltar · 🤫 modo sigiloso (gatear sin ruido) · 🔢 teclado para escribir el cartelito<br>📷 foto (si tenés la cámara)':'W A S D mover · mouse o ← → girar · 0–9 escribir · Backspace borrar<br>Espacio saltar (¡podés subirte a los sillones!) · C agacharse · Ctrl sigilo (gateás despacio y sin ruido; otra vez para levantarte) · Shift correr<br>Q o clic: piña 👊 (deja ciego 5 s) · F foto · V ver foto';
   c.innerHTML='<h2 class="h" style="font-size:22px">Sala de espera</h2>'+(SRVCODE?'<p style="margin:0">Servidor · código <b style="color:#ffcc4d;font-size:24px;letter-spacing:.2em">'+SRVCODE+'</b></p>':'<p style="margin:0">Modo bots (solo)</p>')+'<ul id="plist"></ul><label>¿Cuántos bots querés? <input type="number" id="bt" min="0" value="'+useBots+'" style="width:64px;padding:6px;border-radius:6px;border:1px solid #fff4;background:#0d0b10;color:inherit;text-align:center"></label><br><small id="bmax" style="color:#aaa"></small><div class="row">'+B('st','')+B('lv','Salir','sec')+'</div><p style="font-size:13px;color:#aaa">'+help+'</p>';
   $('bt').onchange=e=>{useBots=Math.max(0,Math.min(maxBots(),parseInt(e.target.value)||0));e.target.value=useBots};
   $('st').onclick=doStart;
