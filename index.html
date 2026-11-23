@@ -89,18 +89,18 @@ input,select{-webkit-user-select:text;user-select:text}
 .tb{position:absolute;border-radius:50%;border:2px solid #fff6;background:#000a;color:#fff;font-size:24px;display:grid;place-items:center;padding:0;touch-action:none;cursor:pointer}
 .tb.on{background:#ffcc4dcc;color:#1a1200}
 #bPunch{right:20px;bottom:20px;width:80px;height:80px;font-size:36px}
-#bJump{right:112px;bottom:26px;width:58px;height:58px}
-#bCrouch{right:28px;bottom:112px;width:52px;height:52px}
-#bPadBtn{right:92px;bottom:112px;width:52px;height:52px;font-size:20px}
-#bPhoto{right:156px;bottom:96px;width:52px;height:52px}
-#bBomb{right:182px;bottom:24px;width:56px;height:56px;font-size:28px}
-#bView{right:156px;bottom:154px;width:52px;height:52px}
+#bJump{right:105px;bottom:37px;width:46px;height:46px;font-size:19px}
+#bCrouch{right:39px;bottom:105px;width:42px;height:42px;font-size:19px}
+#bPadBtn{right:86px;bottom:86px;width:42px;height:42px;font-size:16px}
+#bPhoto{right:133px;bottom:79px;width:42px;height:42px;font-size:19px}
+#bBomb{right:156px;bottom:34px;width:44px;height:44px;font-size:22px}
+#bView{right:77px;bottom:131px;width:42px;height:42px;font-size:19px}
 #numin{position:absolute;left:0;top:0;width:40px;height:40px;opacity:0;font-size:16px;border:0;padding:0;margin:0;background:transparent;caret-color:transparent;pointer-events:none}
 body.mob.kb #input{bottom:auto;top:62px}
 #rot{position:fixed;inset:0;z-index:50;background:#0d0b10;display:none;place-items:center;text-align:center;font-size:20px;padding:30px;line-height:1.4}
 @media (orientation:portrait){body.mob #rot{display:grid}}
 body.mob #stats{bottom:auto;top:64px;left:12px;font-size:12px}
-body.mob #mini{left:auto;right:56px;top:8px;bottom:auto;width:84px;height:84px}
+body.mob #mini{left:auto;right:10px;top:8px;bottom:auto;width:84px;height:84px}
 body.mob #score .st{font-size:11px;margin-bottom:2px}
 body.mob #score .sb b{font-size:20px;line-height:34px;height:34px}
 body.mob #input{pointer-events:auto;bottom:10px;gap:6px}
@@ -109,6 +109,11 @@ body.mob #toast{top:22%;font-size:17px}
 body.mob #goal{top:84px}
 body.mob #photo:not(.big){width:130px;bottom:auto;top:92px;right:10px}
 body.mob #keys{display:none}
+body.mob #ex{top:8px;left:10px;right:auto}
+body.mob #fs{top:8px;left:50px;right:auto}
+body.mob #bhud{top:8px;left:92px;right:auto;height:34px;box-sizing:border-box;padding:0 8px;font-size:17px;line-height:1}
+body.mob #bhud .bb{font-size:15px;margin-left:6px;padding-left:6px}
+body.mob #lp{top:52px;max-height:calc(100% - 200px)}
 @media (max-height:480px){.card{padding:12px}.card p{margin:4px 0;font-size:13px}.logo{font-size:34px}.card button.big{font-size:18px;padding:10px 24px}.credit{margin-top:10px}#cover{padding:8px}}
 #lp{position:absolute;left:10px;top:10px;z-index:3;width:min(250px,42%);display:none;background:#1b1722ee;border:1px solid #fff3;border-radius:12px;padding:12px;box-sizing:border-box;font-size:14px;max-height:calc(100% - 20px);overflow:auto;text-align:center}
 #lp h2{margin:0 0 4px;font-size:18px;color:var(--ac)}
@@ -145,7 +150,7 @@ body.mob #wd{padding:1.5% 2%}body.mob #wd h3{font-size:15px}body.mob #wdt button
 
 /* ---------- NAIPE: carta para cambiar de numero (carga 2 min) ---------- */
 #naipe{right:12px;bottom:14px;width:70px;height:70px;z-index:4;display:none}
-body.mob #naipe{right:250px;bottom:20px}
+body.mob #naipe{right:auto;left:152px;bottom:44px;width:62px;height:62px}
 body.mob #naipe.ready{pointer-events:auto;cursor:pointer}
 #naipe svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
 #naipe .nt{fill:none;stroke:#ffb62e;stroke-width:3;opacity:.5}
@@ -1230,7 +1235,7 @@ function update(dt){if(STEALTH&&(!P.alive||!inGame()))STEALTH=false;P.sn=STEALTH
   if(b.kx||b.ky){const kx=b.x+b.kx*dt,ky=b.y+b.ky*dt;if(free(kx,b.y,.3,b.f,true))b.x=kx;if(free(b.x,ky,.3,b.f,true))b.y=ky;const dk=Math.max(0,1-6*dt);b.kx*=dk;b.ky*=dk;if(Math.abs(b.kx)+Math.abs(b.ky)<.05)b.kx=b.ky=0}
   const bl=b.blur>performance.now();if(bl){b.rx=b.x;b.ry=b.y;continue}const bs=1.2,nx=b.x+Math.cos(b.a)*bs*dt,ny=b.y+Math.sin(b.a)*bs*dt;
   if(b.t<=0||!free(nx,ny,.3,b.f,true)){b.a=Math.random()*6.28;b.t=1+Math.random()*3}else{b.x=nx;b.y=ny}b.rx=b.x;b.ry=b.y}
- naipeUpdate();if(phase==='play')voices();dizzyUpdate();voicesUpdate(dt);footsteps(dt);updShards();sabUpdate(dt);updBombs();updBricks();updAim();{const nw=performance.now();for(let i=FX.length-1;i>=0;i--)if(nw-FX[i].t0>1600)FX.splice(i,1)}hudT-=dt;if(hudT<=0){hudT=.2;drawTop()}}
+ naipeUpdate();punchIcon();if(phase==='play')voices();dizzyUpdate();voicesUpdate(dt);footsteps(dt);updShards();sabUpdate(dt);updBombs();updBricks();updAim();{const nw=performance.now();for(let i=FX.length-1;i>=0;i--)if(nw-FX[i].t0>1600)FX.splice(i,1)}hudT-=dt;if(hudT<=0){hudT=.2;drawTop()}}
 let last=performance.now(),errN=0;
 function reportErr(w,err){console.error('[juego] error en '+w,err);if(errN++<3)try{toast('⚠ Error en '+w+': '+((err&&err.message)||err),'#ff5a5a')}catch{}}
 (function loop(t){requestAnimationFrame(loop); // se agenda PRIMERO: pase lo que pase, el juego sigue dibujando
@@ -1282,7 +1287,7 @@ function feed(t,c){const f=$('feed'),d=document.createElement('div');d.className
 function scoreRows(){return[{n:P.name||'Vos',k:P.kills|0,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k)}
 function drawTop(){$('ex').style.display=phase==='play'?'block':'none';$('input').style.display=phase==='play'?'':'none';$('keys').innerHTML=phase==='play'&&showKeys&&!MOB?KEYS:'';tcSync();const arr=[{n:P.name||'Vos',k:P.kills,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k).slice(0,6);
  $('top').innerHTML='';{const rows=scoreRows(),top=rows[0].k,cands=rows.filter(r=>r.k===top),ld=cands.find(r=>r.n===lastLead)||cands.find(r=>r.me)||cands[0];if(phase==='play'&&top>0&&ld.n!==lastLead){feed(ld.me?'👑 ¡Pasaste al frente!':'👑 '+ld.n+' lleva la delantera','#ffcc4d');lastLead=ld.n}const lead=top;$('score').innerHTML=phase==='play'?`<div class="st">Primero en lograr ${GOAL} eliminaciones</div><div class="sr"><div class="sb"><b>${lead}</b><span>${top>0?'👑 '+esc(ld.me?'Vos':ld.n):'Líder'}</span></div><em>-</em><div class="sb me"><b>${P.kills|0}</b><span>Vos</span></div></div>`:''}
- $('goal').textContent=phase==='play'&&botsOn?'Bots activados':'';$('stats').textContent=phase==='play'?''+(P.cam?' · 📷 G foto, V ver':'')+(P.mapId?' · 🗺️ mapa (hasta que te eliminen)':'')+(performance.now()<P.blur?' · 💫 nublado '+Math.ceil((P.blur-performance.now())/1000)+'s':'')+(P.hold==='brick'?' · 🧱 clic: tirar':P.hold?' · 💣 clic: tirar · B: guardar':'')+(performance.now()<P.inv?' · ⭐ invisible '+Math.ceil((P.inv-performance.now())/1000)+'s':''):''}
+ $('goal').textContent=phase==='play'&&botsOn?'Bots activados':'';$('stats').textContent=phase==='play'?''+(!MOB&&P.cam?' · 📷 G foto, V ver':'')+(!MOB&&P.mapId?' · 🗺️ mapa (hasta que te eliminen)':'')+(performance.now()<P.blur?' · 💫 nublado '+Math.ceil((P.blur-performance.now())/1000)+'s':'')+(P.hold==='brick'?' · 🧱 clic: tirar':P.hold?' · 💣 clic: tirar · B: guardar':'')+(performance.now()<P.inv?' · ⭐ invisible '+Math.ceil((P.inv-performance.now())/1000)+'s':''):''}
 function drawLobby(){if(phase!=='lobby')return;const ul=$('plist');if(!ul)return;
  const l3=LOBBY3D(),host=!room||room.isHost,hid=room&&SRVCODE?PFX+SRVCODE:null,
   rows=[{n:P.name+' (vos)',h:host&&!!room},...[...lobby.entries()].map(([id,p])=>({n:p.name+(p.playing?' · jugando':''),h:id===hid}))];
@@ -1458,6 +1463,11 @@ NI.addEventListener('focus',()=>{padOn=true;document.body.classList.add('kb')});
 NI.addEventListener('blur',()=>{padOn=false;document.body.classList.remove('kb')});
 NI.addEventListener('input',()=>{if(phase!=='play'||!P.alive){NI.value='';return}let v=NI.value.replace(/\D/g,'').slice(0,4);buf=v;NI.value=v;drawInput();if(v.length===4){trySubmit();NI.blur()}});
 NI.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();NI.blur()}});
+function brickNear(){if(!P.alive||phase!=='play'||P.hold||performance.now()<P.blur)return false;const it=brickItem();if(!it||!it.alive||it.f!==P.f)return false;
+ const dx=it.rx-P.x,dy=it.ry-P.y,d=Math.hypot(dx,dy);if(d>BRICK_GRAB)return false;
+ let da=d<.05?0:Math.atan2(dy,dx)-P.a;da=Math.atan2(Math.sin(da),Math.cos(da));if(d>.35&&Math.abs(da)>BRICK_GRAB_ARC)return false;
+ if(d>.05&&cast(P.x,P.y,dx/d,dy/d).d<d-.2)return false;return true}
+function punchIcon(){if(!MOB)return;const b=$('bPunch'),ic=brickNear()?'✋':'👊';if(b.textContent!==ic)b.textContent=ic}
 function tcSync(){const on=MOB&&inGame(),pl=phase==='play';['bPunch','bPadBtn'].forEach(i=>$(i).style.display=pl?'':'none');$('tc').style.display=on?'block':'none';if(!on){if(padOn)showPad(false);return}$('bPhoto').style.display=P.cam?'grid':'none';$('bBomb').style.display=P.bombs>0&&pl?'grid':'none';$('bView').style.display=hasPhoto?'grid':'none'}
 (()=>{const joy=$('joy'),jk=$('joyk');let jid=null;
  const jset=e=>{const r=joy.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-(r.left+R),dy=e.clientY-(r.top+R);const l=Math.hypot(dx,dy),mx=R*.7;if(l>mx){dx*=mx/l;dy*=mx/l}
