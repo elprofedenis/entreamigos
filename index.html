@@ -8,6 +8,10 @@
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,sans-serif}
 body{display:flex;align-items:center;justify-content:center}
 #ex{position:absolute;top:48px;right:10px;z-index:5;width:34px;height:34px;border-radius:8px;border:1px solid #fff4;background:#000a;color:#fff;font-size:17px;cursor:pointer;padding:0;display:none}
+#feed{top:112px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:6}
+#feed .fm{background:#000b;border:1px solid #fff3;border-radius:8px;padding:4px 12px;font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;transition:opacity .5s}
+body.mob #feed{top:96px}body.mob #feed .fm{font-size:12px;padding:3px 10px}
+.sc{width:100%;border-collapse:collapse;margin:10px 0}.sc td,.sc th{padding:5px 8px;border-bottom:1px solid #fff2;text-align:left}.sc th{color:#aaa;font-size:12px;font-weight:600}.sc td:nth-child(n+3),.sc th:nth-child(n+3){text-align:center}.sc tr.me td{color:var(--ac);font-weight:700}
 #fs{position:absolute;top:8px;right:10px;z-index:5;width:34px;height:34px;border-radius:8px;border:1px solid #fff4;background:#000a;color:#fff;font-size:18px;cursor:pointer;padding:0}
 #wrap{position:relative;flex:none;width:min(100vw,177.78vh);width:min(100vw,177.78dvh);aspect-ratio:16/9;overflow:hidden;user-select:none}
 canvas{width:100%;height:100%;display:block;cursor:crosshair}
@@ -115,7 +119,7 @@ body.mob #lp small.help{display:none}
   <div class="hud" id="toast"></div>
   <div class="hud" id="input"><b></b><b></b><b></b><b></b></div>
   <div id="dead"><div><div id="dk"></div><div id="dn"></div></div></div>
-  <div class="hud" id="keys"></div><canvas class="hud" id="mini" width="100" height="100"></canvas><div class="hud" id="top"></div><div class="hud" id="score"></div><div class="hud" id="goal"></div>
+  <div class="hud" id="keys"></div><canvas class="hud" id="mini" width="100" height="100"></canvas><div class="hud" id="top"></div><div class="hud" id="score"></div><div class="hud" id="goal"></div><div class="hud" id="feed"></div>
   <div id="cover"><div class="card" id="card" style="text-align:center"></div></div>
   <button id="fs" title="Pantalla completa">⛶</button><button id="ex" title="Salir de la partida (volver a la sala)">🚪</button>
   <div id="lp"></div>
@@ -218,7 +222,7 @@ const ITEMS=[],itemT={},INIT=[['c0','cam',3,4,0],['s0','star',15,5,0],['m0','map
 function resetItems(){Object.values(itemT).forEach(clearTimeout);ITEMS.length=0;INIT.forEach(([id,deco,x,y,f])=>ITEMS.push({id,deco,rx:x+.5,ry:y+.5,f,alive:true}))}
 resetItems();
 const okCell=(f,x,y)=>{const t=MAPS[f]?.[y|0]?.[x|0];return t===0||t===9};
-var GONE={},joinLiveUntil=0;
+var GONE={},joinLiveUntil=0,OVER=null,WINS={},lastLead=null,KNOWN=new Map();
 function moveItem(id,x,y,f,delay){const it=ITEMS.find(i=>i.id===id);if(!it||!okCell(f,x,y))return;clearTimeout(itemT[id]);
  const set=()=>{it.rx=(x|0)+.5;it.ry=(y|0)+.5;it.f=f|0;it.alive=true;it.pend=null;it.holder=null};it.alive=false;if(delay){it.pend={x:x|0,y:y|0,f:f|0,at:performance.now()+delay};itemT[id]=setTimeout(set,delay)}else set()}
 // foto del estado de los objetos (se manda en la presencia) para que quien entra a una partida en curso vea lo mismo que los demas
@@ -598,15 +602,17 @@ cv.onclick=()=>{if(MOB)return;try{if(document.pointerLockElement!==cv)cv.request
 // ---------- sala, partida y fin ----------
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const lobby=new Map();
-function startGame(nb,live){phase='play';FX.length=0;resetItems();if(live)applySnap(live.its);P.cam=null;P.inv=0;P.blur=0;P.map=0;P.zo=0;P.jh=0;P.vz=0;clearPhoto();P.kills=0;[P.x,P.y,P.f]=spawn();P.code=newCode();P.alive=true;P.face=P.pick||FACES.find(f=>norm(f)===norm(P.name))||pickFace(realFaces());buf='';drawInput();
+function startGame(nb,live){phase='play';lastLead=null;FX.length=0;resetItems();if(live)applySnap(live.its);P.cam=null;P.inv=0;P.blur=0;P.map=0;P.zo=0;P.jh=0;P.vz=0;clearPhoto();P.kills=0;[P.x,P.y,P.f]=spawn();P.code=newCode();P.alive=true;P.face=P.pick||FACES.find(f=>norm(f)===norm(P.name))||pickFace(realFaces());buf='';drawInput();
  bots=Array.from({length:Math.min(nb|0,maxBots())},(_,i)=>mkBot(i+1));botsOn=bots.length>0;assignBots();
  $('dead').style.display='none';$('cover').style.display='none';$('lp').style.display='none';regBeat();if(!MOB)toast('Click en la pantalla para capturar el mouse')}
-function endGame(name){if(phase!=='play')return;phase='over';buf='';NI.blur();drawInput();$('dead').style.display='none';try{document.exitPointerLock()}catch{}renderCard(name)}
-function win(name){room?.emit('win',{name}).catch(()=>{});endGame(name)}
+function endGame(name,sc){if(phase!=='play')return;phase='over';buf='';NI.blur();drawInput();$('dead').style.display='none';try{document.exitPointerLock()}catch{}OVER={rows:sc||scoreRows(),win:name};WINS[name]=(WINS[name]||0)+1;renderCard(name)}
+function win(name){room?.emit('win',{name,scores:scoreRows().map(r=>[r.n,r.k])}).catch(()=>{});endGame(name,scoreRows())}
 function exitToLobby(){if(phase!=='play')return;try{document.exitPointerLock()}catch{}if(!confirm('¿Salir de la partida y volver a la sala?'))return;if(phase!=='play')return;clearInterval(deadIv);dropCam();botsOn=false;bots=[];buf='';NI.blur();$('dead').style.display='none';P.alive=true;P.blur=0;enterLobby()}
 $('ex').onmousedown=e=>e.preventDefault();$('ex').onclick=exitToLobby;
+function feed(t,c){const f=$('feed'),d=document.createElement('div');d.className='fm';d.textContent=t;if(c)d.style.color=c;f.appendChild(d);while(f.children.length>4)f.firstChild.remove();setTimeout(()=>{d.style.opacity=0;setTimeout(()=>d.remove(),500)},4500)}
+function scoreRows(){return[{n:P.name||'Vos',k:P.kills|0,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k)}
 function drawTop(){$('ex').style.display=phase==='play'?'block':'none';$('input').style.display=phase==='play'?'':'none';$('keys').innerHTML=phase==='play'&&showKeys&&!MOB?KEYS:'';tcSync();const arr=[{n:P.name||'Vos',k:P.kills,me:1},...[...others.values()].filter(e=>e.name).map(e=>({n:e.name,k:e.kills|0}))].sort((a,b)=>b.k-a.k).slice(0,6);
- $('top').innerHTML='';{const lead=Math.max(P.kills|0,...[...others.values()].map(e=>e.kills|0));$('score').innerHTML=phase==='play'?`<div class="st">Primero en lograr ${GOAL} eliminaciones</div><div class="sr"><div class="sb"><b>${lead}</b><span>Líder</span></div><em>-</em><div class="sb me"><b>${P.kills|0}</b><span>Vos</span></div></div>`:''}
+ $('top').innerHTML='';{const rows=scoreRows(),top=rows[0].k,cands=rows.filter(r=>r.k===top),ld=cands.find(r=>r.n===lastLead)||cands.find(r=>r.me)||cands[0];if(phase==='play'&&top>0&&ld.n!==lastLead){feed(ld.me?'👑 ¡Pasaste al frente!':'👑 '+ld.n+' lleva la delantera','#ffcc4d');lastLead=ld.n}const lead=top;$('score').innerHTML=phase==='play'?`<div class="st">Primero en lograr ${GOAL} eliminaciones</div><div class="sr"><div class="sb"><b>${lead}</b><span>${top>0?'👑 '+esc(ld.me?'Vos':ld.n):'Líder'}</span></div><em>-</em><div class="sb me"><b>${P.kills|0}</b><span>Vos</span></div></div>`:''}
  $('goal').textContent=phase==='play'&&botsOn?'Bots activados':'';$('stats').textContent=phase==='play'?''+(P.cam?' · 📷 F foto, V ver':'')+(performance.now()<P.map?' · 🗺️ mapa '+Math.ceil((P.map-performance.now())/1000)+'s':'')+(performance.now()<P.blur?' · 💫 nublado '+Math.ceil((P.blur-performance.now())/1000)+'s':'')+(performance.now()<P.inv?' · ⭐ invisible '+Math.ceil((P.inv-performance.now())/1000)+'s':''):''}
 function drawLobby(){if(phase!=='lobby')return;const ul=$('plist');if(!ul)return;
  const l3=LOBBY3D(),host=!room||room.isHost,hid=room&&SRVCODE?PFX+SRVCODE:null,
@@ -698,6 +704,9 @@ function bindRoom(r){room=r;
    e.x=s.x;e.y=s.y;e.a=s.a;e.code=String(s.code||'0000');e.alive=s.alive!==false;e.name=nm;e.kills=s.kills|0;e.f=s.f|0;e.z=+s.z||.5;e.jd=+s.jd||0;e.inv=!!s.inv;e.dz=!!s.dz;e.rn=!!s.rn;e.ab=!!s.ab;{const jc=s.jc|0,ac=s.ac|0;if(e.jc!==undefined&&jc!==e.jc)actSound(e,'SALTAR',e.js||(e.js={}));if(e.ac!==undefined&&ac!==e.ac)actSound(e,'PINAMAL');{const sc=s.sc|0;if(e.sc!==undefined&&sc!==e.sc)actSound(e,'CAMARA');e.sc=sc}e.jc=jc;e.ac=ac}{const hc=s.hc|0;if(e.hc!==undefined&&hc!==e.hc&&performance.now()-(e.hit||0)>300){e.hit=performance.now();e.hd=Math.random()<.5?-1:1;if(performance.now()-(e.myHit||0)>2500)hitSound(e)}e.hc=hc}e.face=FACES.includes(s.face)?s.face:null}
   {const nt=performance.now();seen.forEach(id=>delete GONE[id]);ITEMS.forEach(it=>{if(!it.holder||seen.has(it.holder))return;const g=GONE[it.holder]||(GONE[it.holder]=nt);if(nt-g>6000){delete GONE[it.holder];const a=INIT.find(q=>q[0]===it.id);it.holder=null;it.pk=null;if(a)moveItem(it.id,a[2],a[3],a[4],0)}})}
   for(const id of [...others.keys()])if(!seen.has(id)){const o=others.get(id);if(o&&o.f===2&&phase==='lobby'&&P.f===2){addBeam(o.rx,o.ry,2);actSound(o,'SUMAUNO')}others.delete(id)}
+  {const nt=performance.now(),rdy=phase==='lobby'||phase==='play'||phase==='over';
+   inLobby.forEach(id=>{const nm=lobby.get(id).name;if(!KNOWN.has(id)&&rdy)feed('➕ '+nm+' se ha unido a la partida');KNOWN.set(id,{n:nm,t:nt})});
+   KNOWN.forEach((k,id)=>{if(!inLobby.has(id)&&nt-k.t>5000){KNOWN.delete(id);if(rdy)feed('➖ '+k.n+' ha abandonado la partida')}})}
   for(const id of [...lobby.keys()])if(!inLobby.has(id))lobby.delete(id);
   realCount=others.size;assignBots();drawLobby();refreshChars()});
  r.on('kill',m=>{const d=m.data;if(phase!=='play'||!d||m.isMe)return;
@@ -711,11 +720,11 @@ function bindRoom(r){room=r;
    it.pk={t:rt,p:m.peer}}if(it.deco!=='map'){const k=others.get(m.peer);if(k)actSound(k,'CLINK')}if(it.deco==='cam'){it.alive=false;it.holder=m.peer;clearTimeout(itemT[it.id])}else moveItem(d.id,+d.nx,+d.ny,d.nf|0,+d.dl||60000)});
  r.on('camdrop',m=>{if(m.isMe)return;const d=m.data||{},ci=ITEMS.find(i=>i.id===d.id);if(ci){ci.holder=null;ci.pk=null}moveItem(d.id,+d.nx,+d.ny,d.nf|0,0)});
  r.on('start',m=>{if(m.isMe||phase!=='lobby'||m.peer!==PFX+SRVCODE)return;startGame((m.data&&m.data.bots)|0)});
- r.on('win',m=>{if(m.isMe)return;endGame(String((m.data&&m.data.name)||'?').slice(0,14))});
+ r.on('win',m=>{if(m.isMe)return;{const d=m.data||{};endGame(String(d.name||'?').slice(0,14),Array.isArray(d.scores)?d.scores.slice(0,8).map(x=>({n:String(x[0]).slice(0,14),k:x[1]|0,me:String(x[0])===P.name})):null)}});
  clearInterval(presIv);
  presIv=setInterval(()=>{r.presence({name:P.name||null,playing:phase==='play',bots:bots.length,kills:phase==='play'?P.kills:0,lb:(phase==='lobby'&&LOBBY3D())?1:0,f:P.f,face:P.face||null,z:+(P.e-.1+Math.max(0,P.jh)).toFixed(2),jd:+Math.min(0,P.jh).toFixed(2),inv:performance.now()<P.inv,x:+P.x.toFixed(2),y:+P.y.toFixed(2),a:+P.a.toFixed(2),code:P.code,alive:P.alive,dz:performance.now()<P.blur,its:phase==='play'?itemSnap():0,hc:P.hc|0,jc:P.jc|0,ac:P.ac|0,sc:P.sc|0,rn:P.rn?1:0,ab:P.ab?1:0}).catch(()=>{})},100);
  clearInterval(beatIv);if(r.isHost)beatIv=setInterval(regBeat,10000)}
-function leaveRoom(){if(P.f===2)[P.x,P.y,P.f]=spawn();connTok++;stopBeat();clearInterval(beatIv);clearInterval(presIv);if(room){try{room.leave()}catch{}}room=null;myId=null;others.clear();lobby.clear();pendSrv=null}
+function leaveRoom(){if(P.f===2)[P.x,P.y,P.f]=spawn();connTok++;stopBeat();clearInterval(beatIv);clearInterval(presIv);if(room){try{room.leave()}catch{}}room=null;myId=null;others.clear();lobby.clear();KNOWN.clear();pendSrv=null}
 function roomLost(why){if(!room)return;const was=phase;try{document.exitPointerLock()}catch{}leaveRoom();
  if(was==='play'){botsOn=false;bots=[];buf='';drawInput();$('dead').style.display='none';try{document.exitPointerLock()}catch{}}
  NOTE=why||'Se cerró el servidor.';phase='srv';renderCard()}
@@ -791,7 +800,7 @@ function renderCard(winner){const c=$('card'),l3=phase==='lobby'&&LOBBY3D();$('c
   $('st').onclick=doStart;
   $('lv').onclick=leaveToMenu;
   drawLobby();return}
- if(phase==='over'){c.innerHTML='<h2 class="h">🏆 ¡Ganó <span id="wn"></span>!</h2>'+B('bk','Volver a la sala');$('wn').textContent=winner;$('bk').onclick=enterLobby}}
+ if(phase==='over'){const o=OVER||{rows:[],win:winner};c.innerHTML='<h2 class="h">🏆 ¡Ganó <span id="wn"></span>!</h2><table class="sc"><tr><th>#</th><th>Jugador</th><th>Elim.</th><th>Victorias</th></tr>'+o.rows.map((r,i)=>'<tr class="'+(r.me?'me':'')+'"><td>'+(i+1)+'</td><td>'+(r.n===o.win?'🏆 ':'')+esc(r.n)+'</td><td>'+r.k+'</td><td>'+(WINS[r.n]||0)+'</td></tr>').join('')+'</table>'+B('bk','Volver a la sala');$('wn').textContent=o.win||winner;$('bk').onclick=enterLobby}}
 var SRVCODE=null;
 $('fs').onmousedown=e=>e.preventDefault();$('fs').onclick=toggleFS;
 renderCard();
